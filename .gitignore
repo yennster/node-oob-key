@@ -1,0 +1,4 @@
+/mbed-os/*
+/BUILD/*
+mbed_settings.*
+.mbed

@@ -1,0 +1,14 @@
+{
+    "config": {
+        "filesystem_support": {
+            "help": "Whether filesystem is supported on the target",
+            "value": 1
+        }
+    },
+    "target_overrides": {
+        "nrf52_dk": {
+            "target.features_add": ["BLE"],
+            "target.extra_labels_add": ["CORDIO", "CORDIO_BLUENRG"]
+        }
+    }
+}
