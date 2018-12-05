@@ -14,25 +14,26 @@
  * limitations under the License.
  */
 
+#include "SecurityManager.h"
+#include "ble/BLE.h"
 #include <events/mbed_events.h>
 #include <mbed.h>
-#include "ble/BLE.h"
-#include "SecurityManager.h"
 
 #if MBED_CONF_APP_FILESYSTEM_SUPPORT
-#include "LittleFileSystem.h"
 #include "HeapBlockDevice.h"
-#endif //MBED_CONF_APP_FILESYSTEM_SUPPORT
+#include "LittleFileSystem.h"
+#endif // MBED_CONF_APP_FILESYSTEM_SUPPORT
 
 /** This example demonstrates all the basic setup required
  *  for pairing and setting up link security both as a central and peripheral
  *
  *  The example is implemented as two classes, one for the peripheral and one
  *  for central inheriting from a common base. They are run in sequence and
- *  require a peer device to connect to. During the peripheral device demonstration
- *  a peer device is required to connect. In the central device demonstration
- *  this peer device will be scanned for and connected to - therefore it should
- *  be advertising with the same address as when it connected.
+ *  require a peer device to connect to. During the peripheral device
+ * demonstration a peer device is required to connect. In the central device
+ * demonstration this peer device will be scanned for and connected to -
+ * therefore it should be advertising with the same address as when it
+ * connected.
  *
  *  During the test output is written on the serial connection to monitor its
  *  progress.
@@ -46,22 +47,18 @@ static const uint8_t DEVICE_NAME[] = "jenny_SM_device";
 static BLEProtocol::AddressBytes_t peer_address;
 
 /** Base class for both peripheral and central. The same class that provides
- *  the logic for the application also implements the SecurityManagerEventHandler
- *  which is the interface used by the Security Manager to communicate events
- *  back to the applications. You can provide overrides for a selection of events
- *  your application is interested in.
+ *  the logic for the application also implements the
+ * SecurityManagerEventHandler which is the interface used by the Security
+ * Manager to communicate events back to the applications. You can provide
+ * overrides for a selection of events your application is interested in.
  */
 class SMDevice : private mbed::NonCopyable<SMDevice>,
-                 public SecurityManager::EventHandler
-{
+                 public SecurityManager::EventHandler {
 public:
-    SMDevice(BLE &ble, events::EventQueue &event_queue, BLEProtocol::AddressBytes_t &peer_address) :
-        _led1(LED1, 0),
-        _ble(ble),
-        _event_queue(event_queue),
-        _peer_address(peer_address),
-        _handle(0),
-        _is_connecting(false) { };
+    SMDevice(BLE &ble, events::EventQueue &event_queue,
+             BLEProtocol::AddressBytes_t &peer_address)
+        : _led1(LED1, 0), _ble(ble), _event_queue(event_queue),
+          _peer_address(peer_address), _handle(0), _is_connecting(false){};
 
     virtual ~SMDevice()
     {
@@ -86,13 +83,10 @@ public:
         /* this will inform us off all events so we can schedule their handling
          * using our event queue */
         _ble.onEventsToProcess(
-            makeFunctionPointer(this, &SMDevice::schedule_ble_events)
-        );
+            makeFunctionPointer(this, &SMDevice::schedule_ble_events));
 
         /* handle timeouts, for example when connection attempts fail */
-        _ble.gap().onTimeout(
-            makeFunctionPointer(this, &SMDevice::on_timeout)
-        );
+        _ble.gap().onTimeout(makeFunctionPointer(this, &SMDevice::on_timeout));
 
         error = _ble.init(this, &SMDevice::on_init_complete);
 
@@ -110,19 +104,19 @@ public:
     /** Respond to a pairing request. This will be called by the stack
      * when a pairing request arrives and expects the application to
      * call acceptPairingRequest or cancelPairingRequest */
-    virtual void pairingRequest(
-        ble::connection_handle_t connectionHandle
-    ) {
+    virtual void pairingRequest(ble::connection_handle_t connectionHandle)
+    {
         printf("Pairing requested - authorising\r\n");
         _ble.securityManager().setOOBDataUsage(connectionHandle, true);
         _ble.securityManager().acceptPairingRequest(connectionHandle);
     }
 
-    /** Inform the application of a successful pairing. Terminate the demonstration. */
-    virtual void pairingResult(
-        ble::connection_handle_t connectionHandle,
-        SecurityManager::SecurityCompletionStatus_t result
-    ) {
+    /** Inform the application of a successful pairing. Terminate the
+     * demonstration. */
+    virtual void
+    pairingResult(ble::connection_handle_t connectionHandle,
+                  SecurityManager::SecurityCompletionStatus_t result)
+    {
         if (result == SecurityManager::SEC_STATUS_SUCCESS) {
             printf("Pairing successful\r\n");
         } else {
@@ -132,10 +126,9 @@ public:
 
     /** Inform the application of change in encryption status. This will be
      * communicated through the serial port */
-    virtual void linkEncryptionResult(
-        ble::connection_handle_t connectionHandle,
-        ble::link_encryption_t result
-    ) {
+    virtual void linkEncryptionResult(ble::connection_handle_t connectionHandle,
+                                      ble::link_encryption_t result)
+    {
         if (result == ble::link_encryption_t::ENCRYPTED) {
             printf("Link ENCRYPTED\r\n");
         } else if (result == ble::link_encryption_t::ENCRYPTED_WITH_MITM) {
@@ -154,9 +147,10 @@ public:
     /** Indicate that the application needs to send legacy pairing OOB data
      * to the peer. */
     virtual void legacyPairingOobGenerated(const ble::address_t *address,
-                                           const ble::oob_tk_t *temporaryKey) {
+                                           const ble::oob_tk_t *temporaryKey)
+    {
         printf("Temporary key: ");
-        const uint8_t* tk = temporaryKey->data();
+        const uint8_t *tk = temporaryKey->data();
         for (unsigned int i = 0; i < temporaryKey->size(); i++) {
             printf("%u", tk[i]);
         }
@@ -167,15 +161,16 @@ public:
      * data to the peer. */
     virtual void oobGenerated(const ble::address_t *address,
                               const ble::oob_lesc_value_t *random,
-                              const ble::oob_confirm_t *confirm) {
+                              const ble::oob_confirm_t *confirm)
+    {
         printf("Random num: ");
-        const uint8_t* random_num = random->data();
+        const uint8_t *random_num = random->data();
         for (unsigned int i = 0; i < random->size(); i++) {
             printf("%u", random_num[i]);
         }
         printf("\r\n");
         printf("Confirmation: ");
-        const uint8_t* confirm_num = confirm->data();
+        const uint8_t *confirm_num = confirm->data();
         for (unsigned int i = 0; i < confirm->size(); i++) {
             printf("%u", confirm_num[i]);
         }
@@ -186,7 +181,8 @@ private:
     /** Override to start chosen activity when initialisation completes */
     virtual void start() = 0;
 
-    /** This is called when BLE interface is initialised and starts the demonstration */
+    /** This is called when BLE interface is initialised and starts the
+     * demonstration */
     void on_init_complete(BLE::InitializationCompleteCallbackContext *event)
     {
         ble_error_t error;
@@ -197,16 +193,17 @@ private:
         }
 
         /* This path will be used to store bonding information but will fallback
-         * to storing in memory if file access fails (for example due to lack of a filesystem) */
-        const char* db_path = "/fs/bt_sec_db";
-        /* If the security manager is required this needs to be called before any
-         * calls to the Security manager happen. */
+         * to storing in memory if file access fails (for example due to lack of
+         * a filesystem) */
+        const char *db_path = "/fs/bt_sec_db";
+        /* If the security manager is required this needs to be called before
+         * any calls to the Security manager happen. */
         error = _ble.securityManager().init(
-            true, // enableBonding
+            true,  // enableBonding
             false, // requireMITM
             SecurityManager::IO_CAPS_NONE,
-            NULL, // passkey
-            false, // signing
+            NULL,   // passkey
+            false,  // signing
             db_path // Path to the file used to store keys in the filesystem
         );
 
@@ -231,14 +228,12 @@ private:
 
         Gap::PeripheralPrivacyConfiguration_t configuration_p = {
             /* use_non_resolvable_random_address */ false,
-            Gap::PeripheralPrivacyConfiguration_t::REJECT_NON_RESOLVED_ADDRESS
-        };
+            Gap::PeripheralPrivacyConfiguration_t::REJECT_NON_RESOLVED_ADDRESS};
         _ble.gap().setPeripheralPrivacyConfiguration(&configuration_p);
 
         Gap::CentralPrivacyConfiguration_t configuration_c = {
             /* use_non_resolvable_random_address */ false,
-            Gap::CentralPrivacyConfiguration_t::RESOLVE_AND_FORWARD
-        };
+            Gap::CentralPrivacyConfiguration_t::RESOLVE_AND_FORWARD};
         _ble.gap().setCentralPrivacyConfiguration(&configuration_c);
 
         /* this demo switches between being master and slave */
@@ -246,7 +241,8 @@ private:
 #endif
 
         /* Tell the security manager to use methods in this class to inform us
-         * of any events. Class needs to implement SecurityManagerEventHandler. */
+         * of any events. Class needs to implement SecurityManagerEventHandler.
+         */
         _ble.securityManager().setSecurityManagerEventHandler(this);
 
         /* print device address */
@@ -254,21 +250,21 @@ private:
         Gap::Address_t addr;
         _ble.gap().getAddress(&addr_type, addr);
 
-        printf("Device address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-               addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
+        printf("Device address: %02x:%02x:%02x:%02x:%02x:%02x\r\n", addr[5],
+               addr[4], addr[3], addr[2], addr[1], addr[0]);
 
         uint8_t own_addr[6];
-        for(int i = 0; i < 6; i++) {
-          own_addr[i] = (uint8_t) addr[i];
+        for (int i = 0; i < 6; i++) {
+            own_addr[i] = (uint8_t)addr[i];
         }
-        printf("Own address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-               own_addr[5], own_addr[4], own_addr[3], own_addr[2], own_addr[1], own_addr[0]);
+        printf("Own address: %02x:%02x:%02x:%02x:%02x:%02x\r\n", own_addr[5],
+               own_addr[4], own_addr[3], own_addr[2], own_addr[1], own_addr[0]);
 
         const ble::address_t own_address = ble::address_t(own_addr);
 
         ble_error_t oob;
         oob = _ble.securityManager().generateOOB(&own_address);
-        //printf("generateOOB status = %d\r\n", oob);
+        // printf("generateOOB status = %d\r\n", oob);
 
         /* when scanning we want to connect to a peer device so we need to
          * attach callbacks that are used by Gap to notify us of events */
@@ -280,7 +276,8 @@ private:
     };
 
     /** This is called by Gap to notify the application we connected */
-    virtual void on_connect(const Gap::ConnectionCallbackParams_t *connection_event) = 0;
+    virtual void
+    on_connect(const Gap::ConnectionCallbackParams_t *connection_event) = 0;
 
     /** This is called by Gap to notify the application we disconnected,
      *  in our case it ends the demonstration. */
@@ -290,8 +287,8 @@ private:
         _event_queue.break_dispatch();
     };
 
-    /** End demonstration unexpectedly. Called if timeout is reached during advertising,
-     * scanning or connection initiation */
+    /** End demonstration unexpectedly. Called if timeout is reached during
+     * advertising, scanning or connection initiation */
     void on_timeout(const Gap::TimeoutSource_t source)
     {
         printf("Unexpected timeout - aborting\r\n");
@@ -325,8 +322,11 @@ protected:
  * a change in link security. */
 class SMDevicePeripheral : public SMDevice {
 public:
-    SMDevicePeripheral(BLE &ble, events::EventQueue &event_queue, BLEProtocol::AddressBytes_t &peer_address)
-        : SMDevice(ble, event_queue, peer_address) { }
+    SMDevicePeripheral(BLE &ble, events::EventQueue &event_queue,
+                       BLEProtocol::AddressBytes_t &peer_address)
+        : SMDevice(ble, event_queue, peer_address)
+    {
+    }
 
     virtual void start()
     {
@@ -336,15 +336,12 @@ public:
         GapAdvertisingData advertising_data;
 
         /* add advertising flags */
-        advertising_data.addFlags(GapAdvertisingData::LE_GENERAL_DISCOVERABLE
-                                  | GapAdvertisingData::BREDR_NOT_SUPPORTED);
+        advertising_data.addFlags(GapAdvertisingData::LE_GENERAL_DISCOVERABLE |
+                                  GapAdvertisingData::BREDR_NOT_SUPPORTED);
 
         /* add device name */
-        advertising_data.addData(
-            GapAdvertisingData::COMPLETE_LOCAL_NAME,
-            DEVICE_NAME,
-            sizeof(DEVICE_NAME)
-        );
+        advertising_data.addData(GapAdvertisingData::COMPLETE_LOCAL_NAME,
+                                 DEVICE_NAME, sizeof(DEVICE_NAME));
 
         error = _ble.gap().setAdvertisingPayload(advertising_data);
 
@@ -354,7 +351,8 @@ public:
         }
 
         /* advertise to everyone */
-        _ble.gap().setAdvertisingType(GapAdvertisingParams::ADV_CONNECTABLE_UNDIRECTED);
+        _ble.gap().setAdvertisingType(
+            GapAdvertisingParams::ADV_CONNECTABLE_UNDIRECTED);
         /* how many milliseconds between advertisements, lower interval
          * increases the chances of being seen at the cost of more power */
         _ble.gap().setAdvertisingInterval(20);
@@ -378,13 +376,15 @@ public:
 
     /** This is called by Gap to notify the application we connected,
      *  in our case it immediately requests a change in link security */
-    virtual void on_connect(const Gap::ConnectionCallbackParams_t *connection_event)
+    virtual void
+    on_connect(const Gap::ConnectionCallbackParams_t *connection_event)
     {
         ble_error_t error;
 
         /* remember the device that connects to us now so we can connect to it
          * during the next demonstration */
-        memcpy(_peer_address, connection_event->peerAddr, sizeof(_peer_address));
+        memcpy(_peer_address, connection_event->peerAddr,
+               sizeof(_peer_address));
 
         /**
         ble_error_t oob;
@@ -393,8 +393,8 @@ public:
         **/
 
         printf("Connected to: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
-                _peer_address[5], _peer_address[4], _peer_address[3],
-                _peer_address[2], _peer_address[1], _peer_address[0]);
+               _peer_address[5], _peer_address[4], _peer_address[3],
+               _peer_address[2], _peer_address[1], _peer_address[0]);
 
         /* store the handle for future Security Manager requests */
         _handle = connection_event->handle;
@@ -405,9 +405,7 @@ public:
          * may be taken by the master which will trigger events
          * which the applications should deal with. */
         error = _ble.securityManager().setLinkSecurity(
-            _handle,
-            SecurityManager::SECURITY_MODE_ENCRYPTION_WITH_MITM
-        );
+            _handle, SecurityManager::SECURITY_MODE_ENCRYPTION_WITH_MITM);
 
         if (error) {
             printf("Error during SM::setLinkSecurity %d\r\n", error);
@@ -416,13 +414,13 @@ public:
     };
 };
 
-
 #if MBED_CONF_APP_FILESYSTEM_SUPPORT
 bool create_filesystem()
 {
     static LittleFileSystem fs("fs");
 
-    /* replace this with any physical block device your board supports (like an SD card) */
+    /* replace this with any physical block device your board supports (like an
+     * SD card) */
     static HeapBlockDevice bd(4096, 256);
 
     int err = bd.init();
@@ -452,22 +450,22 @@ bool create_filesystem()
 
     return true;
 }
-#endif //MBED_CONF_APP_FILESYSTEM_SUPPORT
+#endif // MBED_CONF_APP_FILESYSTEM_SUPPORT
 
 int main()
 {
-    BLE& ble = BLE::Instance();
+    BLE &ble = BLE::Instance();
     events::EventQueue queue;
 
 #if MBED_CONF_APP_FILESYSTEM_SUPPORT
-    /* if filesystem creation fails or there is no filesystem the security manager
-     * will fallback to storing the security database in memory */
+    /* if filesystem creation fails or there is no filesystem the security
+     * manager will fallback to storing the security database in memory */
     if (!create_filesystem()) {
         printf("Filesystem creation failed, will use memory storage\r\n");
     }
 #endif
 
-    while(1) {
+    while (1) {
         {
             printf("\r\n PERIPHERAL \r\n\r\n");
             SMDevicePeripheral peripheral(ble, queue, peer_address);
