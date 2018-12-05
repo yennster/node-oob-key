@@ -222,8 +222,22 @@ private:
         Gap::AddressType_t addr_type;
         Gap::Address_t addr;
         _ble.gap().getAddress(&addr_type, addr);
+
         printf("Device address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
                addr[5], addr[4], addr[3], addr[2], addr[1], addr[0]);
+
+        uint8_t own_addr[6];
+        for(int i = 0; i < 6; i++) {
+          own_addr[i] = (uint8_t) addr[i];
+        }
+        printf("Own address: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
+               own_addr[5], own_addr[4], own_addr[3], own_addr[2], own_addr[1], own_addr[0]);
+
+        const ble::address_t own_address = ble::address_t(own_addr);
+
+        ble_error_t oob;
+        oob = _ble.securityManager().generateOOB(&own_address);
+        printf("generateOOB status = %d\r\n", oob);
 
         /* when scanning we want to connect to a peer device so we need to
          * attach callbacks that are used by Gap to notify us of events */
@@ -341,6 +355,12 @@ public:
          * during the next demonstration */
         memcpy(_peer_address, connection_event->peerAddr, sizeof(_peer_address));
 
+        /**
+        ble_error_t oob;
+        oob = _ble.securityManager().generateOOB(_ble.gap().getPeerAddress());
+        printf("generateOOB = %d", oob);
+        **/
+
         printf("Connected to: %02x:%02x:%02x:%02x:%02x:%02x\r\n",
                 _peer_address[5], _peer_address[4], _peer_address[3],
                 _peer_address[2], _peer_address[1], _peer_address[0]);
@@ -357,9 +377,6 @@ public:
             _handle,
             SecurityManager::SECURITY_MODE_ENCRYPTION_WITH_MITM
         );
-
-        ble_error_t sec = _ble.securityManager().getLinkSecurity(_handle);
-        printf("LinkSecurity = %d\r\n", sec)
 
         if (error) {
             printf("Error during SM::setLinkSecurity %d\r\n", error);
@@ -425,13 +442,6 @@ int main()
             SMDevicePeripheral peripheral(ble, queue, peer_address);
             peripheral.run();
         }
-        /**
-        {
-            printf("\r\n CENTRAL \r\n\r\n");
-            SMDeviceCentral central(ble, queue, peer_address);
-            central.run();
-        }
-        **/
     }
 
     return 0;
