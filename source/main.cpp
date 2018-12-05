@@ -151,6 +151,37 @@ public:
         );**/
     }
 
+    /** Indicate that the application needs to send legacy pairing OOB data
+     * to the peer. */
+    virtual void legacyPairingOobGenerated(const ble::address_t *address,
+                                           const ble::oob_tk_t *temporaryKey) {
+        printf("Temporary key: ");
+        const uint8_t* tk = temporaryKey->data();
+        for (unsigned int i = 0; i < temporaryKey->size(); i++) {
+            printf("%u", tk[i]);
+        }
+        printf("\r\n");
+    }
+
+    /** Indicate that the application needs to send secure connections OOB
+     * data to the peer. */
+    virtual void oobGenerated(const ble::address_t *address,
+                              const ble::oob_lesc_value_t *random,
+                              const ble::oob_confirm_t *confirm) {
+        printf("Random num: ");
+        const uint8_t* random_num = random->data();
+        for (unsigned int i = 0; i < random->size(); i++) {
+            printf("%u", random_num[i]);
+        }
+        printf("\r\n");
+        printf("Confirmation: ");
+        const uint8_t* confirm_num = confirm->data();
+        for (unsigned int i = 0; i < confirm->size(); i++) {
+            printf("%u", confirm_num[i]);
+        }
+        printf("\r\n");
+    }
+
 private:
     /** Override to start chosen activity when initialisation completes */
     virtual void start() = 0;
@@ -171,12 +202,12 @@ private:
         /* If the security manager is required this needs to be called before any
          * calls to the Security manager happen. */
         error = _ble.securityManager().init(
-            true,
-            false,
+            true, // enableBonding
+            false, // requireMITM
             SecurityManager::IO_CAPS_NONE,
-            NULL,
-            false,
-            db_path
+            NULL, // passkey
+            false, // signing
+            db_path // Path to the file used to store keys in the filesystem
         );
 
         if (error) {
@@ -237,7 +268,7 @@ private:
 
         ble_error_t oob;
         oob = _ble.securityManager().generateOOB(&own_address);
-        printf("generateOOB status = %d\r\n", oob);
+        //printf("generateOOB status = %d\r\n", oob);
 
         /* when scanning we want to connect to a peer device so we need to
          * attach callbacks that are used by Gap to notify us of events */
