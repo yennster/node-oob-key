@@ -19,11 +19,6 @@
 #include <events/mbed_events.h>
 #include <mbed.h>
 
-#if MBED_CONF_APP_FILESYSTEM_SUPPORT
-#include "HeapBlockDevice.h"
-#include "LittleFileSystem.h"
-#endif // MBED_CONF_APP_FILESYSTEM_SUPPORT
-
 /** This example demonstrates all the basic setup required
  *  for pairing and setting up link security both as a central and peripheral
  *
@@ -107,7 +102,7 @@ public:
     virtual void pairingRequest(ble::connection_handle_t connectionHandle)
     {
         printf("Pairing requested - authorising\r\n");
-        _ble.securityManager().setOOBDataUsage(connectionHandle, true);
+        //_ble.securityManager().setOOBDataUsage(connectionHandle, true);
         _ble.securityManager().acceptPairingRequest(connectionHandle);
     }
 
@@ -218,28 +213,6 @@ private:
             printf("Error during preserveBondingStateOnReset %d\r\n", error);
         }
 
-#if MBED_CONF_APP_FILESYSTEM_SUPPORT
-        /* Enable privacy so we can find the keys */
-        error = _ble.gap().enablePrivacy(true);
-
-        if (error) {
-            printf("Error enabling privacy\r\n");
-        }
-
-        Gap::PeripheralPrivacyConfiguration_t configuration_p = {
-            /* use_non_resolvable_random_address */ false,
-            Gap::PeripheralPrivacyConfiguration_t::REJECT_NON_RESOLVED_ADDRESS};
-        _ble.gap().setPeripheralPrivacyConfiguration(&configuration_p);
-
-        Gap::CentralPrivacyConfiguration_t configuration_c = {
-            /* use_non_resolvable_random_address */ false,
-            Gap::CentralPrivacyConfiguration_t::RESOLVE_AND_FORWARD};
-        _ble.gap().setCentralPrivacyConfiguration(&configuration_c);
-
-        /* this demo switches between being master and slave */
-        _ble.securityManager().setHintFutureRoleReversal(true);
-#endif
-
         /* Tell the security manager to use methods in this class to inform us
          * of any events. Class needs to implement SecurityManagerEventHandler.
          */
@@ -257,8 +230,7 @@ private:
         for (int i = 0; i < 6; i++) {
             own_addr[i] = (uint8_t)addr[i];
         }
-        printf("Own address: %02x:%02x:%02x:%02x:%02x:%02x\r\n", own_addr[5],
-               own_addr[4], own_addr[3], own_addr[2], own_addr[1], own_addr[0]);
+        //printf("Own address: %02x:%02x:%02x:%02x:%02x:%02x\r\n", own_addr[5], own_addr[4], own_addr[3], own_addr[2], own_addr[1], own_addr[0]);
 
         const ble::address_t own_address = ble::address_t(own_addr);
 
@@ -414,56 +386,10 @@ public:
     };
 };
 
-#if MBED_CONF_APP_FILESYSTEM_SUPPORT
-bool create_filesystem()
-{
-    static LittleFileSystem fs("fs");
-
-    /* replace this with any physical block device your board supports (like an
-     * SD card) */
-    static HeapBlockDevice bd(4096, 256);
-
-    int err = bd.init();
-
-    if (err) {
-        return false;
-    }
-
-    err = bd.erase(0, bd.size());
-
-    if (err) {
-        return false;
-    }
-
-    err = fs.mount(&bd);
-
-    if (err) {
-        /* Reformat if we can't mount the filesystem */
-        printf("No filesystem found, formatting...\r\n");
-
-        err = fs.reformat(&bd);
-
-        if (err) {
-            return false;
-        }
-    }
-
-    return true;
-}
-#endif // MBED_CONF_APP_FILESYSTEM_SUPPORT
-
 int main()
 {
     BLE &ble = BLE::Instance();
     events::EventQueue queue;
-
-#if MBED_CONF_APP_FILESYSTEM_SUPPORT
-    /* if filesystem creation fails or there is no filesystem the security
-     * manager will fallback to storing the security database in memory */
-    if (!create_filesystem()) {
-        printf("Filesystem creation failed, will use memory storage\r\n");
-    }
-#endif
 
     while (1) {
         {
