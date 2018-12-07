@@ -2,3 +2,4 @@ mbed-os/*
 /BUILD/*
 mbed_settings.*
 .mbed
+*.DS_Store
